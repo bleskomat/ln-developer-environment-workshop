@@ -1,0 +1,21 @@
+repositories:
+  - name: scalinglightning
+    url: https://charts.scalinglightning.com
+releases:
+  - name: bitcoind
+    namespace: simple-network
+    chart: scalinglightning/bitcoind
+    values:
+      - rpcEntryPoint: endpoint37
+      - zmqPubBlockEntryPoint: endpoint38
+      - zmqPubTxEntryPoint: endpoint39
+  - name: alice
+    namespace: simple-network
+    chart: scalinglightning/lnd
+    values:
+      - gRPCEntryPoint: endpoint1
+  - name: bob
+    namespace: simple-network
+    chart: scalinglightning/lnd
+    values:
+      - gRPCEntryPoint: endpoint2
