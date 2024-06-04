@@ -4,12 +4,15 @@ const LSPServer = require('../../../');
 describe('lsps0', function() {
 
 	let server;
+	let namespace;
 	before(function() {
+		namespace = this.network.namespace;
 		server = new LSPServer({
 			host: 'localhost',
 			port: 3000,
+			lightning: this.helpers.getNodeConnectionInfo(namespace, 'alice'),
 		});
-		return server.listen();
+		return server.init();
 	});
 
 	after(function() {

@@ -1,8 +1,12 @@
 const assert = require('assert');
+const BigNumber = require('bignumber.js');
+const crypto = require('crypto');
 const fs = require('fs').promises;
 const http = require('http');
+const LSPServer = require('../');
 const path = require('path');
 const { spawn } = require('child_process');
+const secp256k1 = require('secp256k1');
 const url = require('url');
 
 const debug = {
@@ -74,10 +78,12 @@ const helpers = module.exports = {
 		});
 	},
 	scalingLightning: {
+		networks: {},
 		create: function(namespace) {
 			return Promise.resolve().then(() => {
 				assert.ok(namespace, 'Missing required argument: "namespace"');
 				assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+				this.networks[namespace] = { nodes: {} };
 				const helmFilePath = path.join(fixturesDir, 'helmfiles', `${namespace}.yaml`);
 				return fs.stat(helmFilePath).then(() => {
 					debug.log(`Creating network ("${namespace}")...`);
@@ -97,6 +103,7 @@ const helpers = module.exports = {
 			return Promise.resolve().then(() => {
 				assert.ok(namespace, 'Missing required argument: "namespace"');
 				assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+				this.networks[namespace] = null;
 				const helmFilePath = path.join(fixturesDir, 'helmfiles', `${namespace}.yaml`);
 				return fs.stat(helmFilePath).then(() => {
 					debug.log(`Destroying network ("${namespace}")...`);
@@ -130,6 +137,33 @@ const helpers = module.exports = {
 						nodes[name] = { type: 'lightning', name };
 					});
 					return nodes;
+				});
+			});
+		},
+		prepareConnectionInfo: function(namespace, name) {
+			return Promise.resolve().then(() => {
+				assert.ok(namespace, 'Missing required argument: "namespace"');
+				assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+				assert.ok(name, 'Missing required argument: "name"');
+				assert.strictEqual(typeof name, 'string', 'Invalid argument ("name"): String expected');
+				return Promise.all([
+					this.connectionDetails(namespace, name),
+					this.writeAuthFiles(namespace, name),
+				]).then(results => {
+					const [ connectionDetails, authFiles ] = results;
+					const { host, port } = connectionDetails;
+					const { macaroon, cert } = authFiles;
+					const connection = {
+						host,
+						port,
+						macaroon,
+						cert,
+						tlsHostNameOverride: name,
+					};
+					this.networks[namespace] = this.networks[namespace] || { nodes: {} };
+					this.networks[namespace].nodes[name] = this.networks[namespace].nodes[name] || {};
+					this.networks[namespace].nodes[name].connection = connection;
+					return connection;
 				});
 			});
 		},
@@ -186,7 +220,68 @@ const helpers = module.exports = {
 					'pubkey',
 					'--namespace', namespace,
 					'--node', name,
+				]).then(pubKey => {
+					pubKey = pubKey.trim();
+					this.networks[namespace] = this.networks[namespace] || { nodes: {} };
+					this.networks[namespace].nodes[name] = this.networks[namespace].nodes[name] || {};
+					this.networks[namespace].nodes[name].pubKey = pubKey;
+					return pubKey;
+				});
+			});
+		},
+		send: function(namespace, from, to, amountSats) {
+			return Promise.resolve().then(() => {
+				assert.ok(namespace, 'Missing required argument: "namespace"');
+				assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+				assert.ok(from, 'Missing required argument: "from"');
+				assert.strictEqual(typeof from, 'string', 'Invalid argument ("from"): String expected');
+				assert.ok(to, 'Missing required argument: "to"');
+				assert.strictEqual(typeof to, 'string', 'Invalid argument ("to"): String expected');
+				assert.ok(amountSats, 'Missing required argument: "amountSats"');
+				assert.ok(helpers.isValidBigNumberInteger(amountSats), 'Invalid argument ("amountSats"): Integer expected');
+				return this.cli([
+					'send',
+					'--namespace', namespace,
+					'--from', from,
+					'--to', to,
+					'--amount', amountSats,
+				]).then(stdout => {
+					assert.match(stdout, /^Sent funds, txid: /i);
+				});
+			});
+		},
+		connectPeer: function(namespace, from, to) {
+			return Promise.resolve().then(() => {
+				assert.ok(namespace, 'Missing required argument: "namespace"');
+				assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+				assert.ok(from, 'Missing required argument: "from"');
+				assert.strictEqual(typeof from, 'string', 'Invalid argument ("from"): String expected');
+				assert.ok(to, 'Missing required argument: "to"');
+				assert.strictEqual(typeof to, 'string', 'Invalid argument ("to"): String expected');
+				return this.cli([
+					'connectpeer',
+					'--namespace', namespace,
+					'--from', from,
+					'--to', to,
 				]);
+			});
+		},
+		generate: function(namespace, name, numBlocks) {
+			return Promise.resolve().then(() => {
+				assert.ok(namespace, 'Missing required argument: "namespace"');
+				assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+				assert.ok(name, 'Missing required argument: "name"');
+				assert.strictEqual(typeof name, 'string', 'Invalid argument ("name"): String expected');
+				assert.ok(Number.isInteger(numBlocks), 'Invalid argument ("numBlocks"): Integer expected');
+				assert.ok(numBlocks > 0, 'Invalid argument ("numBlocks"): Must be greater than 0');
+				return this.cli([
+					'generate',
+					'--namespace', namespace,
+					'--node', name,
+					'--blocks', numBlocks,
+				]).then(stdout => {
+					assert.match(stdout, /^Generated blocks:/i);
+				});
 			});
 		},
 		cli: function(args, options) {
@@ -226,12 +321,86 @@ const helpers = module.exports = {
 			});
 		},
 	},
+	lnrpcRequest: function(namespace, name, method, params) {
+		return Promise.resolve().then(() => {
+			const lightning = this.getNodeConnectionInfo(namespace, name);
+			const client = new LSPServer({ lightning });
+			return client.prepareLnRpc().then(() => {
+				return client.lnrpcRequest(method, params);
+			});
+		});
+	},
+	getNode: function(namespace, name) {
+		assert.ok(namespace, 'Missing required argument: "namespace"');
+		assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+		assert.ok(name, 'Missing required argument: "name"');
+		assert.strictEqual(typeof name, 'string', 'Invalid argument ("name"): String expected');
+		assert.ok(this.scalingLightning.networks[namespace]);
+		assert.ok(this.scalingLightning.networks[namespace].nodes[name]);
+		return this.scalingLightning.networks[namespace].nodes[name];
+	},
+	getNodePubKey: function(namespace, name) {
+		return this.getNode(namespace, name).pubKey;
+	},
+	getNodeConnectionInfo: function(namespace, name) {
+		return this.getNode(namespace, name).connection;
+	},
+	prepareOrder: function(namespace, name, params) {
+		return Promise.resolve().then(() => {
+			assert.ok(namespace, 'Missing required argument: "namespace"');
+			assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+			assert.ok(name, 'Missing required argument: "name"');
+			assert.strictEqual(typeof name, 'string', 'Invalid argument ("name"): String expected');
+			assert.ok(!params || typeof params === 'object', 'Invalid argument ("params"): Object expected');
+			return this.lnrpcRequest(namespace, name, 'NewAddress', { type: 0 }).then(refundOnchainAddress => {
+				params = Object.assign({
+					lsp_balance_sat: '1000000',
+					client_balance_sat: '0',
+					client_node_pubkey: this.scalingLightning.networks[namespace].nodes[name].pubKey,
+					required_channel_confirmations: 0,
+					funding_confirms_within_blocks: 6,
+					channel_expiry_blocks: 144,
+					token: '',
+					refund_onchain_address: refundOnchainAddress,
+					announce_channel: true,
+				}, params || {});
+				return this.jsonRpcRequest('lsps1.create_order', params).then(response => {
+					assert.ok(response.result, JSON.stringify(response));
+					const order = response.result;
+					assert.ok(order && order.order_id);
+					return order;
+				});
+			});
+		});
+	},
+	wait: function(delay) {
+		return new Promise(resolve => {
+			setTimeout(resolve, delay);
+		});
+	},
+	waitForBlockHeightToCatchUp: function(namespace, bitcoinNode, lightningNode) {
+		return Promise.resolve().then(() => {
+			assert.ok(namespace, 'Missing required argument: "namespace"');
+			assert.strictEqual(typeof namespace, 'string', 'Invalid argument ("namespace"): String expected');
+			assert.ok(bitcoinNode, 'Missing required argument: "bitcoinNode"');
+			assert.strictEqual(typeof bitcoinNode, 'string', 'Invalid argument ("bitcoinNode"): String expected');
+			assert.ok(lightningNode, 'Missing required argument: "lightningNode"');
+			assert.strictEqual(typeof lightningNode, 'string', 'Invalid argument ("lightningNode"): String expected');
+		});
+	},
 	promiseAllSeries: function(promiseFactories) {
 		let result = Promise.resolve();
 		promiseFactories.forEach(promiseFactory => {
 			result = result.then(promiseFactory);
 		});
 		return result;
+	},
+	isValidBigNumberInteger: function(value) {
+		let bn;
+		try { bn = new BigNumber(value); } catch (error) {
+			return false;
+		}
+		return bn.isInteger();
 	},
 	jsonRpcRequest: function(method, params, options) {
 		return new Promise((resolve, reject) => {
@@ -280,5 +449,13 @@ const helpers = module.exports = {
 				reject(error);
 			}
 		});
+	},
+	generateRandomLightningNodeKeyPair: function() {
+		let privKey;
+		do {
+			privKey = crypto.randomBytes(32);
+		} while (!secp256k1.privateKeyVerify(privKey))
+		const pubKey = Buffer.from(secp256k1.publicKeyCreate(privKey));
+		return { privKey, pubKey };
 	},
 };

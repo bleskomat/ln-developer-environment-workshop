@@ -3,31 +3,29 @@ const LSPServer = require('../../../');
 
 describe('listen()', function() {
 
+	let server;
+	afterEach(function() {
+		if (server) return server.close();
+	});
+
 	it('starts listening for connections as a JSON-RPC HTTP server', function() {
-		const server = new LSPServer({
+		server = new LSPServer({
 			host: 'localhost',
 			port: 3000,
 		});
 		return server.listen().then(() => {
 			return this.helpers.jsonRpcRequest('lsps0.list_protocols');
-		}).then(() => {
-			return server.close();
 		});
 	});
 
 	describe('error cases', function() {
 
-		let server;
 		before(function() {
 			server = new LSPServer({
 				host: 'localhost',
 				port: 3000,
 			});
 			return server.listen();
-		});
-
-		after(function() {
-			if (server) return server.close();
 		});
 
 		it('method_not_found', function() {

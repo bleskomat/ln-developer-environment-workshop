@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npm run test:e2e",
-    "test:e2e": "./node_modules/.bin/mocha --recursive ./test/e2e --exit"
+    "test:e2e": "./node_modules/.bin/mocha --recursive ./test/e2e --exit --timeout 5000"
   },
   "author": {
     "name": "Charles Hill",
@@ -26,9 +26,11 @@
     "@grpc/proto-loader": "0.7.13",
     "bignumber.js": "9.1.2",
     "body-parser": "1.20.2",
-    "express": "4.19.2"
+    "express": "4.19.2",
+    "uuid": "9.0.1"
   },
   "devDependencies": {
-    "mocha": "10.4.0"
+    "mocha": "10.4.0",
+    "secp256k1": "5.0.0"
   }
 }

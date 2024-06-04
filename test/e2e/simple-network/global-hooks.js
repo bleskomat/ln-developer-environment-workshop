@@ -24,21 +24,7 @@ before(function() {
 		Object.values(this.network.nodes).filter(node => node.type === 'lightning').map(node => {
 			return function() {
 				const { name } = node;
-				return Promise.all([
-					this.helpers.scalingLightning.connectionDetails(namespace, name),
-					this.helpers.scalingLightning.writeAuthFiles(namespace, name),
-				]).then(results => {
-					const [ connectionDetails, authFiles ] = results;
-					const { host, port } = connectionDetails;
-					const { macaroon, cert } = authFiles;
-					this.network.nodes[name].connection = {
-						host,
-						port,
-						macaroon,
-						cert,
-						tlsHostNameOverride: name,
-					};
-				});
+				return this.helpers.scalingLightning.prepareConnectionInfo(namespace, name);
 			}.bind(this);
 		})
 	);
