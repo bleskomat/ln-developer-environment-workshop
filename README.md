@@ -1,10 +1,18 @@
 # Lightning Network Development Environment From Reckless to Professional
 
-In this workshop we will discuss the evolution of the Lightning Network (LN) development ecosystem. From the recent reckless past to the (hopefully) more secure and stable future. We will demonstrate how to achieve a development environment that is reproducible, testable, portable, and reliable.
+In this workshop we will discuss the evolution of the Lightning Network (LN) development ecosystem - from the recent reckless past to the (hopefully) more secure and stable future. We will demonstrate how to achieve a development environment that is reproducible, testable, portable, and reliable.
 
 As a practical example, we have decided to create a simple Lightning Service Provider implementation, loosely following the [LSP Specification](https://github.com/BitcoinAndLightningLayerSpecs/lsp/). As a proof-of-concept, we start with the [LSPS1](https://github.com/BitcoinAndLightningLayerSpecs/lsp/tree/main/LSPS1) channel opening request. Additional services to be implemented could include [LSPS2](https://github.com/BitcoinAndLightningLayerSpecs/lsp/tree/main/LSPS2) JIT (Just-In-Time) channel openings (a.k.a. turbo channels), and submarine swap-in/out as implemented by the [Boltz exchange](https://docs.boltz.exchange/).
 
-The LSP server implementation is written in nodejs and acts as a JSON-RPC over HTTP API. The [mocha](https://mochajs.org/) automated test framework is used to define our tests. The [scaling-lightning](https://github.com/scaling-lightning/scaling-lightning) CLI tool is used to quickly create and destroy Lightning Network nodes. Mocks can be quick and useful but in this workshop we wanted to demonstrate how to test software with actual LN nodes.
+The LSP server implementation is written in nodejs and acts as a JSON-RPC over HTTP API. The [mocha](https://mochajs.org/) automated test framework is used to define our tests. The [scaling-lightning](https://github.com/scaling-lightning/scaling-lightning) CLI tool is used to create and destroy local Bitcoin and LN nodes as well as perform a few administrative commands. Mocks can be quick and easy for unit testing but in this workshop we wanted to demonstrate how to test software with actual LN nodes.
+
+
+## Architecture Overview
+
+The following diagram illustrates the architecture of the scaling-lightning project - see its [documentation](https://scalinglightning.com/docs/architectural-overview) for more details:
+
+![](./assets/scaling-lightning-architecture-diagram.jpeg)
+
 
 
 ## Requirements

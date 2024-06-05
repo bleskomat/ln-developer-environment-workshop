@@ -1,7 +1,8 @@
 {
   "name": "ln-developer-environment-workshop",
   "version": "1.0.0",
-  "description": "In this workshop we will discuss the evolution of the Lightning Network (LN) development ecosystem. From the recent reckless past to the (hopefully) more secure and stable future. We will demonstrate how to achieve a development environment that is reproducible, testable, portable, and reliable.",
+  "description": "",
+  "private": true,
   "main": "index.js",
   "directories": {
     "test": "test"
