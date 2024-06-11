@@ -6,6 +6,47 @@ As a practical example, we have decided to create a simple Lightning Service Pro
 
 The LSP server implementation is written in nodejs and acts as a JSON-RPC over HTTP API. The [mocha](https://mochajs.org/) automated test framework is used to define our tests. The [scaling-lightning](https://github.com/scaling-lightning/scaling-lightning) CLI tool is used to create and destroy local Bitcoin and LN nodes as well as perform a few administrative commands. Mocks can be quick and easy for unit testing but in this workshop we wanted to demonstrate how to test software with actual LN nodes.
 
+## Achieving Professional Development Goals
+To achieve professional development efficiently and effectively, several key objectives need to be met:
+
+* Quick Start: Getting up and running quickly is essential.
+* Reproducibility: Ensuring that processes are replicable and consistent is crucial.
+* Real LN Node Operation: Utilizing actual Lightning Network nodes for realistic testing and development.
+* Regtest Bitcoin: Employing a Bitcoin regtest environment for controlled testing.
+* Compatibility with Continuous Integration (CI): Ability to integrate into automated CI pipelines.
+
+
+## Available Tools
+* "#Reckless" :zap:
+  * Direct usage of the mainnet network for experimentation.
+  * While risky, it can sometimes provide valuable insights.
+* [Polar](https://github.com/jamaljsr/polar)
+  * Highly intuitive interface.
+  * Provides a user-friendly environment for quick startup.
+  * As one of the earliest LN development tools, it continues to be actively maintained.
+* [simLN](https://simln.dev/)
+  * Simulates payment activities across various test networks.
+  * Generates randomized activity based on network topology.
+  * Useful for stress-testing Lightning-enabled applications in liquidity-constrained scenarios.
+* [warnet](https://warnet.dev/)
+  * Establishes a Bitcoin network with specified nodes interconnections.
+  * While primarily focused on Bitcoin Core testing, it also supports Lightning functionality.
+* [Scaling Lightning](https://github.com/scaling-lightning/scaling-lightning)
+  * A comprehensive testing toolkit for evaluating the Lightning Network protocol.
+  * Facilitates network replication among developers using a network file.
+  * Features suitable for automated end-to-end testing, making it suitable for CI integration.
+
+
+## Polar Demonstration Steps
+
+1. Create a network
+1. Adding peer
+1. Wallet Balance Verification
+1. Obtaining Funds into the Wallet:  "lncli newaddress p2wkh"
+1. Manual Channel Opening
+1. Scripted Channel Opening (test/manual/index.js)
+1. Bolt11 invoice Payment
+
 
 ## Architecture Overview
 
@@ -93,13 +134,10 @@ DEBUG=workshop:* WORKSHOP_TEST_SKIP_NETWORK_SETUP=1 npm test
 
 ## Additional Resources and Tools
 
-* [simLN](https://simln.dev/)
-* [Polar](https://github.com/jamaljsr/polar)
 * https://github.com/lndk-org/lndk
 * https://github.com/carlaKC/attackathon
 * https://github.com/sr-gi/attackln
 * https://warnet.dev/
-* https://github.com/0xB10C/btcpp23-nixos-modules-workshop
 * https://github.com/krutt/aesir
 * https://github.com/bitcoindevkit/bitcoin-regtest-box
 
